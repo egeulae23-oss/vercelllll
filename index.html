@@ -1,0 +1,1162 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Memory-to-Prompt</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --bg: #fafaf8;
+      --surface: #ffffff;
+      --border: #e8e4df;
+      --text: #1a1614;
+      --muted: #6b5b4e;
+      --soft: #b8a99a;
+      --accent: #8b6f47;
+      --accent-soft: rgba(139, 111, 71, 0.12);
+      --purple: #6a5acd;
+      --red: #d94040;
+      --green: #2a9d5c;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    .container {
+      width: min(100%, 760px);
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    .page-title {
+      margin: 0 0 4px;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .page-sub {
+      margin: 0 0 32px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .progress-bar {
+      height: 4px;
+      margin-bottom: 32px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--border);
+    }
+
+    .progress-fill {
+      width: 25%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--accent);
+      transition: width 0.3s ease;
+    }
+
+    .step {
+      margin-bottom: 32px;
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .step-num {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--text);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .step-title {
+      font-weight: 800;
+    }
+
+    .step-desc {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .card {
+      margin-bottom: 12px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      box-shadow: 0 8px 24px rgba(26, 22, 20, 0.035);
+    }
+
+    .label {
+      margin: 0 0 8px;
+      color: var(--soft);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+      outline: none;
+      background: var(--bg);
+      color: var(--text);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+      line-height: 1.65;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .upload-area {
+      display: block;
+      margin-bottom: 12px;
+      padding: 20px;
+      border: 1.5px dashed var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .upload-area:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .upload-area input {
+      display: none;
+    }
+
+    .upload-icon {
+      margin-bottom: 6px;
+      font-size: 24px;
+    }
+
+    .upload-text {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .upload-name {
+      display: none;
+      margin-top: 6px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .preview-img,
+    .preview-audio {
+      display: none;
+      width: 100%;
+      margin-top: 10px;
+      border-radius: 10px;
+    }
+
+    .preview-img {
+      max-height: 220px;
+      object-fit: cover;
+    }
+
+    .camera-wrap {
+      display: none;
+      margin-bottom: 12px;
+    }
+
+    #cameraVideo {
+      width: 100%;
+      border-radius: 10px;
+      background: #000;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 800;
+      transition: opacity 0.2s, transform 0.2s, background 0.2s;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+      transform: none;
+    }
+
+    .btn-sm {
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+    }
+
+    .btn-dark {
+      background: var(--text);
+      color: #fff;
+    }
+
+    .btn-outline {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+    }
+
+    .btn-purple {
+      background: var(--purple);
+      color: #fff;
+    }
+
+    .btn-red {
+      border: 1px solid rgba(217, 64, 64, 0.24);
+      background: transparent;
+      color: var(--red);
+    }
+
+    .radio-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .radio-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      cursor: pointer;
+      user-select: none;
+      font-size: 13px;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+
+    .radio-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .radio-btn input {
+      display: none;
+    }
+
+    .record-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 8px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+    }
+
+    .record-thumb {
+      display: flex;
+      width: 56px;
+      height: 56px;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg);
+      font-size: 22px;
+    }
+
+    .record-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .record-info {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .record-date {
+      margin-bottom: 4px;
+      color: var(--soft);
+      font-size: 11px;
+    }
+
+    .record-text {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+
+    .record-del {
+      border: 0;
+      background: none;
+      color: var(--soft);
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .record-del:hover {
+      color: var(--red);
+    }
+
+    .empty-state {
+      padding: 32px 20px;
+      color: var(--soft);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .spinner-wrap {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .result-label {
+      margin: 16px 0 6px;
+      color: var(--soft);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .result-block {
+      min-height: 48px;
+      padding: 16px;
+      border-radius: 12px;
+      background: var(--text);
+      color: #f5f0ea;
+      font-family: "SF Mono", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .result-block.light {
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .tag {
+      border-radius: 999px;
+      padding: 5px 11px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    #toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 10;
+      max-width: calc(100% - 32px);
+      transform: translateX(-50%);
+      border-radius: 999px;
+      padding: 11px 18px;
+      background: rgba(26, 22, 20, 0.9);
+      color: #fff;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+      white-space: nowrap;
+    }
+
+    #toast.show {
+      opacity: 1;
+    }
+
+    @media (max-width: 560px) {
+      .container { padding-top: 28px; }
+      .input-row { grid-template-columns: 1fr; }
+      .btn { width: 100%; }
+      .btn-sm { width: auto; }
+      #toast { white-space: normal; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1 class="page-title">Memory-to-Prompt</h1>
+    <p class="page-sub">부모의 감정 일기와 사진을 분석해 영상 생성 모델에 넣을 프롬프트로 변환합니다.</p>
+
+    <div class="progress-bar" aria-label="진행률">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <section class="step" id="step1">
+      <div class="step-header">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">시작 온보딩</div>
+          <div class="step-desc">부모의 얼굴 사진과 목소리 샘플을 등록합니다.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="input-row">
+          <label>
+            <div class="label">부모 이름</div>
+            <input type="text" id="parentName" placeholder="예: 김지수 엄마" autocomplete="name">
+          </label>
+          <label>
+            <div class="label">아이 이름</div>
+            <input type="text" id="childName" placeholder="예: 예준" autocomplete="off">
+          </label>
+        </div>
+
+        <div class="label">얼굴 사진 업로드</div>
+        <label class="upload-area" id="photoUploadArea">
+          <input type="file" id="photoFile" accept="image/*">
+          <div class="upload-icon">📷</div>
+          <div class="upload-text">클릭해서 사진 선택</div>
+          <div class="upload-name" id="photoName"></div>
+        </label>
+        <img class="preview-img" id="photoPreview" alt="부모 얼굴 사진 미리보기">
+
+        <div class="btn-row">
+          <button class="btn btn-outline btn-sm" type="button" id="startCameraBtn">📹 카메라 켜기</button>
+          <button class="btn btn-dark btn-sm" type="button" id="captureBtn" style="display:none">📸 촬영 저장</button>
+          <button class="btn btn-outline btn-sm" type="button" id="stopCamBtn" style="display:none">⏹ 카메라 끄기</button>
+        </div>
+        <div class="camera-wrap" id="cameraWrap">
+          <video id="cameraVideo" autoplay playsinline muted></video>
+          <canvas id="cameraCanvas" style="display:none"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label">목소리 파일 업로드</div>
+        <label class="upload-area" id="voiceUploadArea">
+          <input type="file" id="voiceFile" accept="audio/*">
+          <div class="upload-icon">🎙️</div>
+          <div class="upload-text">클릭해서 오디오 파일 선택</div>
+          <div class="upload-name" id="voiceName"></div>
+        </label>
+        <audio class="preview-audio" id="voicePreview" controls></audio>
+
+        <div class="btn-row">
+          <button class="btn btn-outline btn-sm" type="button" id="recStartBtn">🎙️ 녹음 시작</button>
+          <button class="btn btn-dark btn-sm" type="button" id="recStopBtn" style="display:none">⏹ 녹음 종료</button>
+        </div>
+        <div style="color:var(--soft);font-size:12px;margin-top:8px" id="voiceStatus">목소리 샘플이 아직 없습니다.</div>
+      </div>
+    </section>
+
+    <section class="step" id="step2">
+      <div class="step-header">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">감정 일기 입력</div>
+          <div class="step-desc">하루의 짧은 감정, 순간, 아이와 함께한 장면을 기록합니다.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <label>
+          <div class="label">기록 날짜</div>
+          <input type="date" id="diaryDate" style="margin-bottom:14px">
+        </label>
+
+        <div class="label">일기 사진 첨부</div>
+        <label class="upload-area">
+          <input type="file" id="diaryPhoto" accept="image/*">
+          <div class="upload-icon">🌸</div>
+          <div class="upload-text">오늘 찍은 사진 첨부 (선택)</div>
+          <div class="upload-name" id="diaryPhotoName"></div>
+        </label>
+        <img class="preview-img" id="diaryPhotoPreview" alt="일기 사진 미리보기">
+
+        <label>
+          <div class="label" style="margin-top:14px">일기 텍스트</div>
+          <textarea id="diaryText" placeholder="오늘 있었던 일, 느낀 감정을 자유롭게 적어주세요&#10;짧아도 괜찮아요."></textarea>
+        </label>
+
+        <div class="btn-row">
+          <button class="btn btn-dark" type="button" id="saveDiaryBtn">💾 일기 저장</button>
+          <button class="btn btn-outline" type="button" id="resetDiaryBtn">↺ 입력 초기화</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="step" id="step3">
+      <div class="step-header">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">기록 목록</div>
+          <div class="step-desc">저장된 기록을 쌓은 뒤 프롬프트로 재구성합니다.</div>
+        </div>
+      </div>
+      <div id="recordList"></div>
+    </section>
+
+    <section class="step" id="step4">
+      <div class="step-header">
+        <div class="step-num">4</div>
+        <div>
+          <div class="step-title">AI 영상 프롬프트 생성</div>
+          <div class="step-desc">영상 생성 모델에 넣을 수 있는 프롬프트까지 만듭니다.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="label">시점 변환</div>
+        <div class="radio-group">
+          <label class="radio-btn active" id="rb-child">
+            <input type="radio" name="pov" value="child" checked> 아이 시점
+          </label>
+          <label class="radio-btn" id="rb-third">
+            <input type="radio" name="pov" value="third"> 3인칭 시점
+          </label>
+        </div>
+
+        <div class="label" style="margin-top:16px">애니메이션 톤</div>
+        <div class="radio-group" id="toneGroup">
+          <label class="radio-btn active" data-tone="0"><input type="radio" name="tone" checked> 부드러운 수채화</label>
+          <label class="radio-btn" data-tone="1"><input type="radio" name="tone"> 따뜻한 2D 그림책</label>
+          <label class="radio-btn" data-tone="2"><input type="radio" name="tone"> 잔잔한 시네마틱 3D</label>
+        </div>
+
+        <label>
+          <div class="label" style="margin-top:16px">분석 모델</div>
+          <select id="modelSelect">
+            <option value="server">Claude API (서버 환경변수 사용)</option>
+            <option value="local">로컬 키워드 분석 (API 없이)</option>
+          </select>
+        </label>
+        <div style="color:var(--soft);font-size:11px;margin-top:6px">
+          Vercel 환경변수에 ANTHROPIC_API_KEY를 설정하면 서버 분석을 사용할 수 있습니다.
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-purple" type="button" id="generateBtn">✦ AI 영상 프롬프트 생성</button>
+          <button class="btn btn-outline" type="button" id="copyBtn" style="display:none">📋 프롬프트 복사</button>
+          <button class="btn btn-red btn-sm" type="button" id="resetAllBtn">전체 초기화</button>
+        </div>
+
+        <div class="spinner-wrap" id="loadingWrap">
+          <div class="spinner"></div>
+          분석 중...
+        </div>
+      </div>
+
+      <div id="resultArea" style="display:none">
+        <div class="card" style="margin-top:0">
+          <div class="result-label">입력 텍스트</div>
+          <div class="result-block light" id="resultInput">저장된 일기를 기반으로 표시됩니다.</div>
+
+          <div class="result-label">감정 키워드</div>
+          <div class="tags" id="resultTags"></div>
+
+          <div class="result-label">상황 분석</div>
+          <div class="result-block light" id="resultAnalysis">아직 분석 전입니다.</div>
+
+          <div class="result-label">아이 시점 / 3인칭 변환 내레이션</div>
+          <div class="result-block light" id="resultNarration">아직 변환 전입니다.</div>
+
+          <div class="result-label">영상 생성 프롬프트</div>
+          <div class="result-block" id="resultPrompt">아직 생성 전입니다.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const STORAGE_KEYS = {
+      records: 'epoch_records',
+      parentPhoto: 'epoch_parentPhoto',
+    };
+
+    const TONES = [
+      'soft watercolor animation, warm pastel colors',
+      'warm 2D picture book illustration style, gentle strokes',
+      'calm cinematic 3D animation, photorealistic lighting',
+    ];
+
+    let records = loadRecords();
+    let pov = 'child';
+    let tone = 0;
+    let mediaRecorder = null;
+    let audioStream = null;
+    let cameraStream = null;
+    let audioChunks = [];
+    let diaryPhotoBase64 = null;
+
+    const $ = (id) => document.getElementById(id);
+
+    function loadRecords() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.records) || '[]');
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveRecords() {
+      localStorage.setItem(STORAGE_KEYS.records, JSON.stringify(records));
+    }
+
+    function setTodayDate() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      $('diaryDate').value = `${y}-${m}-${day}`;
+    }
+
+    function bindEvents() {
+      $('photoFile').addEventListener('change', onPhotoSelect);
+      $('voiceFile').addEventListener('change', onVoiceSelect);
+      $('diaryPhoto').addEventListener('change', onDiaryPhotoSelect);
+      $('startCameraBtn').addEventListener('click', startCamera);
+      $('captureBtn').addEventListener('click', capturePhoto);
+      $('stopCamBtn').addEventListener('click', stopCamera);
+      $('recStartBtn').addEventListener('click', startRecording);
+      $('recStopBtn').addEventListener('click', stopRecording);
+      $('saveDiaryBtn').addEventListener('click', saveDiary);
+      $('resetDiaryBtn').addEventListener('click', resetDiary);
+      $('generateBtn').addEventListener('click', generatePrompt);
+      $('copyBtn').addEventListener('click', copyPrompt);
+      $('resetAllBtn').addEventListener('click', resetAll);
+      $('rb-child').addEventListener('click', () => setPov('child'));
+      $('rb-third').addEventListener('click', () => setPov('third'));
+
+      document.querySelectorAll('[data-tone]').forEach((element) => {
+        element.addEventListener('click', () => setTone(Number(element.dataset.tone)));
+      });
+
+      $('parentName').addEventListener('input', updateProgress);
+    }
+
+    function setUploadName(id, name) {
+      const el = $(id);
+      el.textContent = name;
+      el.style.display = name ? 'block' : 'none';
+    }
+
+    function onPhotoSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      setUploadName('photoName', file.name);
+      const reader = new FileReader();
+      reader.onload = (readerEvent) => {
+        const img = $('photoPreview');
+        img.src = readerEvent.target.result;
+        img.style.display = 'block';
+        localStorage.setItem(STORAGE_KEYS.parentPhoto, readerEvent.target.result);
+        updateProgress();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function startCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('이 브라우저는 카메라 촬영을 지원하지 않습니다');
+        return;
+      }
+
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        $('cameraVideo').srcObject = cameraStream;
+        $('cameraWrap').style.display = 'block';
+        $('captureBtn').style.display = '';
+        $('stopCamBtn').style.display = '';
+      } catch {
+        showToast('카메라 접근 권한이 필요합니다');
+      }
+    }
+
+    function capturePhoto() {
+      const video = $('cameraVideo');
+      if (!video.videoWidth || !video.videoHeight) {
+        showToast('카메라 화면이 준비된 뒤 다시 시도해주세요');
+        return;
+      }
+
+      const canvas = $('cameraCanvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      const img = $('photoPreview');
+      img.src = dataUrl;
+      img.style.display = 'block';
+      localStorage.setItem(STORAGE_KEYS.parentPhoto, dataUrl);
+      stopCamera();
+      updateProgress();
+      showToast('사진이 저장됐어요');
+    }
+
+    function stopCamera() {
+      if (cameraStream) cameraStream.getTracks().forEach((track) => track.stop());
+      cameraStream = null;
+      $('cameraVideo').srcObject = null;
+      $('cameraWrap').style.display = 'none';
+      $('captureBtn').style.display = 'none';
+      $('stopCamBtn').style.display = 'none';
+    }
+
+    function onVoiceSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      setUploadName('voiceName', file.name);
+      const audio = $('voicePreview');
+      audio.src = URL.createObjectURL(file);
+      audio.style.display = 'block';
+      $('voiceStatus').textContent = `목소리 샘플: ${file.name}`;
+      showToast('목소리 파일이 등록됐어요');
+    }
+
+    async function startRecording() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+        showToast('이 브라우저는 녹음을 지원하지 않습니다');
+        return;
+      }
+
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(audioStream);
+        audioChunks = [];
+        mediaRecorder.addEventListener('dataavailable', (event) => {
+          if (event.data.size > 0) audioChunks.push(event.data);
+        });
+        mediaRecorder.addEventListener('stop', finishRecording);
+        mediaRecorder.start();
+        $('recStartBtn').style.display = 'none';
+        $('recStopBtn').style.display = '';
+      } catch {
+        showToast('마이크 접근 권한이 필요합니다');
+      }
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      $('recStartBtn').style.display = '';
+      $('recStopBtn').style.display = 'none';
+    }
+
+    function finishRecording() {
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const audio = $('voicePreview');
+      audio.src = URL.createObjectURL(blob);
+      audio.style.display = 'block';
+      $('voiceStatus').textContent = '녹음된 목소리 샘플 준비됨';
+      if (audioStream) audioStream.getTracks().forEach((track) => track.stop());
+      audioStream = null;
+      showToast('녹음이 저장됐어요');
+    }
+
+    function onDiaryPhotoSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      setUploadName('diaryPhotoName', file.name);
+      const reader = new FileReader();
+      reader.onload = (readerEvent) => {
+        diaryPhotoBase64 = readerEvent.target.result;
+        const img = $('diaryPhotoPreview');
+        img.src = diaryPhotoBase64;
+        img.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function saveDiary() {
+      const text = $('diaryText').value.trim();
+      const date = $('diaryDate').value;
+      if (!text) {
+        showToast('일기 내용을 입력해주세요');
+        return;
+      }
+
+      records.push({
+        id: Date.now(),
+        date,
+        text,
+        photo: diaryPhotoBase64,
+      });
+      saveRecords();
+      resetDiary();
+      renderRecords();
+      updateProgress();
+      showToast('일기가 저장됐어요');
+    }
+
+    function resetDiary() {
+      $('diaryText').value = '';
+      $('diaryPhoto').value = '';
+      setUploadName('diaryPhotoName', '');
+      $('diaryPhotoPreview').removeAttribute('src');
+      $('diaryPhotoPreview').style.display = 'none';
+      diaryPhotoBase64 = null;
+      setTodayDate();
+    }
+
+    function renderRecords() {
+      const list = $('recordList');
+      list.replaceChildren();
+
+      if (!records.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.textContent = '아직 저장된 기록이 없어요';
+        list.appendChild(empty);
+        return;
+      }
+
+      records.forEach((record, index) => {
+        const item = document.createElement('article');
+        item.className = 'record-item';
+
+        const thumb = document.createElement('div');
+        thumb.className = 'record-thumb';
+        if (record.photo) {
+          const img = document.createElement('img');
+          img.src = record.photo;
+          img.alt = '일기 사진';
+          thumb.appendChild(img);
+        } else {
+          thumb.textContent = '📝';
+        }
+
+        const info = document.createElement('div');
+        info.className = 'record-info';
+
+        const date = document.createElement('div');
+        date.className = 'record-date';
+        date.textContent = record.date || '날짜 없음';
+
+        const text = document.createElement('div');
+        text.className = 'record-text';
+        text.textContent = record.text.length > 80 ? `${record.text.slice(0, 80)}...` : record.text;
+
+        const del = document.createElement('button');
+        del.className = 'record-del';
+        del.type = 'button';
+        del.setAttribute('aria-label', '기록 삭제');
+        del.textContent = '✕';
+        del.addEventListener('click', () => deleteRecord(index));
+
+        info.append(date, text);
+        item.append(thumb, info, del);
+        list.appendChild(item);
+      });
+    }
+
+    function deleteRecord(index) {
+      records.splice(index, 1);
+      saveRecords();
+      renderRecords();
+      updateProgress();
+      showToast('기록이 삭제됐어요');
+    }
+
+    function setPov(value) {
+      pov = value === 'third' ? 'third' : 'child';
+      $('rb-child').classList.toggle('active', pov === 'child');
+      $('rb-third').classList.toggle('active', pov === 'third');
+    }
+
+    function setTone(index) {
+      tone = Number.isInteger(index) && TONES[index] ? index : 0;
+      document.querySelectorAll('[data-tone]').forEach((element) => {
+        const active = Number(element.dataset.tone) === tone;
+        element.classList.toggle('active', active);
+        const input = element.querySelector('input');
+        if (input) input.checked = active;
+      });
+    }
+
+    async function generatePrompt() {
+      if (!records.length) {
+        showToast('먼저 일기를 한 개 이상 저장해주세요');
+        return;
+      }
+
+      const combinedText = records.map((record) => `[${record.date}] ${record.text}`).join('\n');
+      const parentName = $('parentName').value.trim() || '엄마';
+      const childName = $('childName').value.trim() || '아이';
+      const model = $('modelSelect').value;
+
+      $('loadingWrap').style.display = 'flex';
+      $('resultArea').style.display = 'none';
+      $('copyBtn').style.display = 'none';
+      $('generateBtn').disabled = true;
+      $('resultInput').textContent = combinedText;
+
+      if (model === 'local') {
+        showResult(
+          extractKeywords(combinedText),
+          localAnalysis(parentName, childName),
+          localNarration(pov, parentName, childName),
+          localPrompt(extractKeywords(combinedText), pov, tone, parentName, childName),
+        );
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            diary: combinedText,
+            pov,
+            tone: TONES[tone],
+            parentName,
+            childName,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || '서버 오류');
+        showResult(data.keywords, data.analysis, data.narration, data.prompt);
+      } catch (error) {
+        $('loadingWrap').style.display = 'none';
+        $('generateBtn').disabled = false;
+        showToast(`오류: ${error.message}`);
+      }
+    }
+
+    function showResult(keywords, analysis, narration, prompt) {
+      $('loadingWrap').style.display = 'none';
+      $('resultArea').style.display = 'block';
+      $('copyBtn').style.display = '';
+      $('generateBtn').disabled = false;
+
+      const tagsEl = $('resultTags');
+      tagsEl.replaceChildren();
+      const safeKeywords = Array.isArray(keywords) && keywords.length ? keywords : ['사랑', '성장'];
+      safeKeywords.forEach((keyword) => {
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = keyword;
+        tagsEl.appendChild(tag);
+      });
+
+      $('resultAnalysis').textContent = analysis || '분석 결과가 없습니다.';
+      $('resultNarration').textContent = narration || '내레이션 결과가 없습니다.';
+      $('resultPrompt').textContent = prompt || '프롬프트 결과가 없습니다.';
+      updateProgress();
+    }
+
+    async function copyPrompt() {
+      const text = $('resultPrompt').textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast('프롬프트가 복사됐어요');
+      } catch {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        textarea.remove();
+        showToast('프롬프트가 복사됐어요');
+      }
+    }
+
+    function resetAll() {
+      if (!confirm('모든 기록과 결과를 초기화할까요?')) return;
+
+      records = [];
+      saveRecords();
+      localStorage.removeItem(STORAGE_KEYS.parentPhoto);
+      renderRecords();
+      resetDiary();
+      stopCamera();
+      $('resultArea').style.display = 'none';
+      $('copyBtn').style.display = 'none';
+      $('photoPreview').removeAttribute('src');
+      $('photoPreview').style.display = 'none';
+      $('voicePreview').removeAttribute('src');
+      $('voicePreview').style.display = 'none';
+      $('voiceStatus').textContent = '목소리 샘플이 아직 없습니다.';
+      $('parentName').value = '';
+      $('childName').value = '';
+      setUploadName('photoName', '');
+      setUploadName('voiceName', '');
+      updateProgress();
+      showToast('전체 초기화 완료');
+    }
+
+    function extractKeywords(text) {
+      const keywordMap = {
+        '기쁨': ['웃', '기쁘', '즐겁', '행복', '좋았'],
+        '감동': ['감동', '눈물', '울컥', '뭉클'],
+        '따뜻함': ['따뜻', '온기', '포근', '안아'],
+        '피곤함': ['피곤', '힘들', '지쳤'],
+        '설렘': ['설레', '두근', '처음'],
+        '뿌듯함': ['대견', '뿌듯', '잘했'],
+      };
+      const keywords = Object.entries(keywordMap)
+        .filter(([, words]) => words.some((word) => text.includes(word)))
+        .map(([keyword]) => keyword)
+        .slice(0, 4);
+
+      return keywords.length ? keywords : ['사랑', '성장'];
+    }
+
+    function localAnalysis(parent, child) {
+      return `${parent}가 ${child}와 함께한 특별한 순간들이 담긴 일기입니다. 일상 속 감정과 성장의 기록이 따뜻하게 쌓여 있습니다.`;
+    }
+
+    function localNarration(selectedPov, parent, child) {
+      if (selectedPov === 'child') {
+        return `내가 기억하지 못하는 그 시절, ${parent}는 나를 이런 눈으로 바라보고 있었다. 그 따뜻한 시선과 마음이 지금의 나를 만들었다.`;
+      }
+      return `${parent}는 ${child}를 바라보며 그 순간을 온 마음으로 담아두었다. 작은 성장 하나하나가 그에게는 세상 전부였다.`;
+    }
+
+    function localPrompt(keywords, selectedPov, selectedTone, parent, child) {
+      const toneText = TONES[selectedTone] || TONES[0];
+      const perspective = selectedPov === 'child'
+        ? `${child}'s perspective looking up at ${parent}`
+        : `third-person cinematic view of ${parent} with ${child}`;
+      return `${toneText}, ${perspective}, warm golden hour lighting, soft focus background, emotional family memory, nostalgic atmosphere, gentle camera movement, keywords: ${keywords.join(', ')}, duration: 60 seconds, aspect ratio 16:9`;
+    }
+
+    function updateProgress() {
+      const hasProfile = Boolean($('parentName').value.trim()) || $('photoPreview').style.display !== 'none';
+      const hasRecords = records.length > 0;
+      const hasResult = $('resultArea').style.display !== 'none';
+      const done = [hasProfile, hasRecords, hasRecords, hasResult].filter(Boolean).length;
+      $('progressFill').style.width = `${(done / 4) * 100}%`;
+    }
+
+    function showToast(message) {
+      const toast = $('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => toast.classList.remove('show'), 2400);
+    }
+
+    function restoreSavedPhoto() {
+      const savedPhoto = localStorage.getItem(STORAGE_KEYS.parentPhoto);
+      if (!savedPhoto) return;
+
+      const img = $('photoPreview');
+      img.src = savedPhoto;
+      img.style.display = 'block';
+    }
+
+    bindEvents();
+    setTodayDate();
+    restoreSavedPhoto();
+    renderRecords();
+    updateProgress();
+  </script>
+</body>
+</html>

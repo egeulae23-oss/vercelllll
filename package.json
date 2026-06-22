@@ -1,0 +1,12 @@
+{
+  "name": "memory-to-prompt",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "node --check api/generate.js && node scripts/check-index.mjs",
+    "check": "npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
